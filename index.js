@@ -1,31 +1,30 @@
-import express, { json } from "express";
-import cors from "cors";
-import { connect, Schema, model } from "mongoose";
-import dotenv from "dotenv";
-import nodemailer from "nodemailer";
-
-dotenv.config(); // ✅ Load environment variables
+const express = require("express");
+const cors = require("cors");
+const mongoose = require("mongoose");
+const nodemailer = require("nodemailer");
+require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(json());
+app.use(express.json());
 
 // MongoDB connection
-connect(process.env.MONGO_URI)
+mongoose
+  .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.log("❌ MongoDB error:", err.message));
+  .catch((err) => console.log("❌ Error:", err.message));
 
 // Schema & Model
-const MessageSchema = new Schema({
+const MessageSchema = new mongoose.Schema({
   name: String,
   email: String,
   message: String,
 });
-const Message = model("Message", MessageSchema);
+const Message = mongoose.model("Message", MessageSchema);
 
-// Email transporter
+// Email Transporter
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -37,29 +36,21 @@ const transporter = nodemailer.createTransport({
 // Route
 app.post("/api/contact", async (req, res) => {
   try {
-    const { name, email, message } = req.body;
-    console.log("📩 Incoming contact form:", req.body);
-
-    // Save to DB
-    const newMessage = new Message({ name, email, message });
+    const newMessage = new Message(req.body);
     await newMessage.save();
 
-    // Send confirmation email
     const mailOptions = {
       from: `"Sourav" <${process.env.EMAIL_USER}>`,
-      to: email,
+      to: req.body.email,
       subject: "Thank you for contacting me!",
-      text: `Hi ${name},\n\nThank you for reaching out! I appreciate your message and will get back to you as soon as possible.\n\nBest regards,\nSourav`,
+      text: `Hi ${req.body.name},\n\nThank you for reaching out! I appreciate your message and will get back to you as soon as possible.\n\nBest regards,\nSourav`,
     };
 
-    // ✅ Send the email
     await transporter.sendMail(mailOptions);
-    console.log("✅ Confirmation email sent");
 
-    // Response to frontend
     res.status(201).json({ success: true, message: "Message sent!" });
   } catch (error) {
-    console.error("❌ Error:", error.message);
+    console.error("❌ Error while saving message:", error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });
