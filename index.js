@@ -3,6 +3,8 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const nodemailer = require("nodemailer");
 require("dotenv").config();
+console.log("Email:", process.env.EMAIL_USER);
+console.log("Pass:", process.env.EMAIL_PASS);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
